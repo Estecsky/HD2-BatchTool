@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "source": "bundled_hd2_reference.blend",
+  "generated_utc": "2026-09-12T17:56:15Z",
+  "bone_annotation_schema": "HD2BoneAnnotations1",
+  "bone_annotation_property": "HD2BT_BoneLabelCN",
+  "source_bone_property": "HD2BT_WorkRigSourceBone",
+  "source_rest_local_property": "HD2BT_AvatarSourceRestLocal",
+  "groups": {
+    "TP_INITIAL": {
+      "root": "content/fac_helldivers/cha_avatar/avatar_helldiver_rig",
+      "children": [
+        "content/fac_helldivers/cha_avatar/avatar_helldiver_lod0"
+      ],
+      "rig_id": "5556372446766824087",
+      "bone_count": 100,
+      "child_vertex_counts": {
+        "content/fac_helldivers/cha_avatar/avatar_helldiver_lod0": 27355
+      }
+    },
+    "TP_TPOSE": {
+      "root": "avatar_helldiver_rig_t-pose",
+      "children": [
+        "content/fac_helldivers/cha_avatar/avatar_helldiver_lod0.001"
+      ],
+      "rig_id": "5556372446766824087",
+      "bone_count": 100,
+      "child_vertex_counts": {
+        "content/fac_helldivers/cha_avatar/avatar_helldiver_lod0.001": 27355
+      }
+    },
+    "FP_INITIAL": {
+      "root": "第一人称骨架_rig",
+      "children": [
+        "15046329857013222381_lod0",
+        "15046329857013222381_lod1",
+        "15046329857013222381_lod2",
+        "15046329857013222381_lod3",
+        "15046329857013222381_lod4"
+      ],
+      "rig_id": "15046329857013222381",
+      "bone_count": 63,
+      "child_vertex_counts": {
+        "15046329857013222381_lod0": 761,
+        "15046329857013222381_lod1": 454,
+        "15046329857013222381_lod2": 452,
+        "15046329857013222381_lod3": 454,
+        "15046329857013222381_lod4": 4124
+      }
+    }
+  }
+}

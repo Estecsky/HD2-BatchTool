@@ -1,0 +1,9 @@
+**/*.pyc
+**/__pycache__/
+/build/
+/dist/
+/docs/
+/tools/
+/tests/
+/.vscode/
+_build_manifest.json
