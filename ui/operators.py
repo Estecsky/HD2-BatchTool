@@ -412,7 +412,7 @@ class HD2BT_OT_prepare_armor_body(Operator):
             target = _find_hd2_target(context)
             project = getattr(target.data, 'hd2pb_project', None)
             if not self.physics_aware and project is not None and project.schema_version:
-                self.report({'WARNING'}, '检测到物理项目：身体跨部位链需配套新版 AQSDK 与共享物理运行时；头盔和身体不可共用一条链，切后请执行 SDK 保存预检')
+                self.report({'WARNING'}, '检测到物理项目：头盔和身体不可共用一条链，切后请执行 SDK 保存预检')
             result = auto_split_independent_character(context, target, physics_aware=self.physics_aware)
             settings = context.scene.hd2bt_settings
             settings.last_cut_warning = result["normal_warning"]
@@ -437,7 +437,7 @@ class HD2BT_OT_prepare_armor_body(Operator):
 class HD2BT_OT_prepare_armor_physics(HD2BT_OT_prepare_armor_body):
     bl_idname = 'hd2bt.prepare_armor_physics'
     bl_label = '按物理链切分'
-    bl_description = '按物理链正权重及链组连接整体分配部位；身体跨部位制作需配套新版共享物理运行时，头盔与身体仍分别保存'
+    bl_description = '按物理链正权重及链组连接整体分配部位；头盔与身体仍分别保存'
     physics_aware = True
 
 
