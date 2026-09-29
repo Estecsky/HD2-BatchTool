@@ -1382,7 +1382,8 @@ def rename_vertex_groups(
     if source_project is not None and source_project.schema_version and source_project.chains:
         if collapse_unmapped:
             raise HD2BTError("当前源骨架有物理项目，请选择保留未映射骨；父链合并会丢失物理自由度")
-        from HD2PhysBoneTool.physbone.blender import transfer as physics_transfer
+        from ..utils.addon_bridge import companion_module
+        physics_transfer = companion_module("PHYSBONE", "physbone.blender.transfer", error_type=HD2BTError)
         target_project = target.data.hd2pb_project
         if target_project.schema_version:
             raise HD2BTError("目标骨架已有物理项目；请使用空的工作骨架，避免覆盖作者数据")

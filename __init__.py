@@ -78,6 +78,7 @@ del _class_is_registered, _old_unregister, _old_modules, _old_groups, _old_state
 # 继续绑定旧版算法函数。
 
 _SUBMODULE_ORDER = (
+    "utils.addon_bridge",
     "utils.constants",
     "utils.utils",
     "ui.blender_lifecycle",

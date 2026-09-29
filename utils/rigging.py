@@ -708,11 +708,9 @@ def convert_pose_space(obj, direction, kind=None):
     physics = None
     project = getattr(obj.data, "hd2pb_project", None)
     if project is not None and project.schema_version:
-        try:
-            from HD2PhysBoneTool.physbone.blender.rest_pose import RestPoseEdit
-        except ImportError as exc:
-            raise HD2BTError("带物理的姿态转换需要配套更新 PhysBoneTool，请先更新后再转换") from exc
-        physics = RestPoseEdit(obj)
+        from .addon_bridge import companion_module
+        rest_pose = companion_module("PHYSBONE", "physbone.blender.rest_pose", error_type=HD2BTError)
+        physics = rest_pose.RestPoseEdit(obj)
     body_names = set(load_body_pose_profile()['body_bones'])
     extra_names = {b.name for b in obj.data.bones if b.get('HD2BT_CustomBone')}
     if physics:

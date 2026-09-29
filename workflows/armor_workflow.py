@@ -667,7 +667,9 @@ def _physics_face_plans(sources, target, plans):
     project = getattr(target.data, 'hd2pb_project', None)
     if project is None or not project.schema_version or not project.chains:
         raise HD2BTError('工作骨架没有物理链；请先制作/迁移物理，或使用普通自动切割')
-    from HD2PhysBoneTool.physbone.blender import adapter_v1, ownership
+    from ..utils.addon_bridge import companion_module
+    adapter_v1 = companion_module("PHYSBONE", "physbone.blender.adapter_v1", error_type=HD2BTError)
+    ownership = companion_module("PHYSBONE", "physbone.blender.ownership", error_type=HD2BTError)
     from .physics_cut import plan_physics_cut, AVATAR_PROFILE_BONES
     issues = ownership.canonical_issues(target)
     if issues:
