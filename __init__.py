@@ -32,7 +32,7 @@ def _class_is_registered(cls):
 _old_unregister = globals().get("unregister")
 _old_modules = [
     globals().get(name)
-    for name in ("operators", "dictionary_editor", "properties")
+    for name in ("operators", "dictionary_editor", "properties", "preferences", "updates")
 ]
 _old_groups = [globals().get("CLASSES", ())]
 _old_groups.extend(getattr(module, "CLASSES", ()) for module in _old_modules if module is not None)
@@ -78,6 +78,8 @@ del _class_is_registered, _old_unregister, _old_modules, _old_groups, _old_state
 # 继续绑定旧版算法函数。
 
 _SUBMODULE_ORDER = (
+    "updates",
+    "preferences",
     "utils.addon_bridge",
     "utils.constants",
     "utils.utils",
@@ -146,6 +148,8 @@ _DIRTY = False
 
 
 def _owned_state_present():
+    if updates.owned_state_present() or preferences.owned_state_present():
+        return True
     if _REGISTERED_CLASSES:
         return True
     for module in (properties, dictionary_editor, operators):
@@ -158,6 +162,8 @@ def _owned_state_present():
 
 def _cleanup_steps():
     return (
+        updates.unregister,
+        preferences.unregister,
         lambda: blender_lifecycle.unregister_classes(_REGISTERED_CLASSES),
         operators.unregister,
         dictionary_editor.unregister,
@@ -175,6 +181,8 @@ def register():
         dictionary_editor.register()
         operators.register()
         blender_lifecycle.register_classes(CLASSES, _REGISTERED_CLASSES)
+        preferences.register()
+        updates.register(bl_info)
     except Exception as exc:
         rollback_errors = []
         for rollback in _cleanup_steps():
