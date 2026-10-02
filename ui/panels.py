@@ -142,6 +142,18 @@ class HD2BT_PT_main(Panel):
         row.prop(settings, "cut_normal_warning")
         row.prop(settings, "cut_normal_limit")
         box.label(text="超过警告值保留；超过阻断值取消", icon="INFO")
+        toggle = box.operator(
+            "hd2bt.configure_cut_marking", text="自动标记部位",
+            icon="CHECKBOX_HLT" if settings.cut_auto_mark_parts else "CHECKBOX_DEHLT",
+            depress=settings.cut_auto_mark_parts,
+        )
+        toggle.enable = not settings.cut_auto_mark_parts
+        if settings.cut_auto_mark_parts:
+            logic_label = "自由搭配差分" if settings.cut_difference_logic == "FREE" else "组差分"
+            box.label(text=f"切割标记：{logic_label} / 基础部位")
+            box.prop(settings, "base_group_name", text="基础组")
+        else:
+            box.label(text="只切割，不写入部位与差分标记")
         run_row = box.row()
         run_row.scale_y = 1.3
         run_row.operator(

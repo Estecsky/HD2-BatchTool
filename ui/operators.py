@@ -4,7 +4,7 @@ import os
 import uuid
 import bpy
 import bmesh
-from bpy.props import EnumProperty, StringProperty
+from bpy.props import BoolProperty, EnumProperty, StringProperty
 from bpy.types import Operator
 
 from ..presets.aq_presets import load_aq_preset, user_preset_dir
@@ -395,11 +395,42 @@ class HD2BT_OT_open_aq_preset_folder(Operator):
 
 
 
-class HD2BT_OT_prepare_armor_body(Operator):
-    bl_idname = "hd2bt.prepare_armor_body"
-    bl_label = "自动切割七个身体部件"
-    bl_description = "按权重、骨骼位置和连通块自动切割，并自动指定头部等七个身体部位"
-    bl_options = {"REGISTER", "UNDO"}
+class HD2BT_OT_configure_cut_marking(Operator):
+    bl_idname = "hd2bt.configure_cut_marking"
+    bl_label = "选择自动标记的差分逻辑"
+    bl_description = "开关自动部位标记；开启时选择差分逻辑，取消对话框则保持关闭"
+    bl_options = {"UNDO"}
+
+    enable: BoolProperty(default=True, options={"SKIP_SAVE"})
+    difference_logic: EnumProperty(
+        name="差分逻辑",
+        items=(("FREE", "自由搭配差分", "基础部位常驻，各部位差分独立选择"),
+               ("GROUP", "组差分", "具名身体差分组与头盔单差分")),
+        default="FREE", options={"SKIP_SAVE"},
+    )
+
+    def invoke(self, context, _event):
+        if not self.enable:
+            return self.execute(context)
+        self.difference_logic = "FREE"
+        return context.window_manager.invoke_props_dialog(self, width=380)
+
+    def draw(self, context):
+        self.layout.prop(self, "difference_logic", expand=True)
+        self.layout.label(text="七个切割结果将标记为基础部位")
+        self.layout.label(text=f"基础组：{context.scene.hd2bt_settings.base_group_name}")
+
+    def execute(self, context):
+        settings = context.scene.hd2bt_settings
+        if self.enable:
+            settings.cut_difference_logic = self.difference_logic
+            settings.authoring_difference_logic = self.difference_logic
+        settings.cut_auto_mark_parts = self.enable
+        return {"FINISHED"}
+
+
+class _PrepareArmorMixin:
+    """共享回调不注册为 RNA 类型，两个 Operator 各自注册。"""
     physics_aware = False
 
     @classmethod
@@ -425,7 +456,8 @@ class HD2BT_OT_prepare_armor_body(Operator):
                 settings.last_cut_summary += f"；{len(report['chain_owners'])} 条链整链归属；手动调整身体部位后须重新保存全部相关部位与配套"
             self.report(
                 {"WARNING"} if result["normal_warning"] else {"INFO"},
-                f"已在场景中切出并指定 {len(result['parts'])} 个部位；"
+                f"已在场景中切出 {len(result['parts'])} 个部位；"
+                + ("已自动标记基础部位；" if result['marked_parts'] else "未标记部位，请按需手动指定；") +
                 f"清理 {result['empty_groups_removed']} 个空顶点组；"
                 f"{settings.last_cut_summary}；未存储、未封包",
             )
@@ -434,10 +466,18 @@ class HD2BT_OT_prepare_armor_body(Operator):
             return _report_exception(self, exc)
 
 
-class HD2BT_OT_prepare_armor_physics(HD2BT_OT_prepare_armor_body):
+class HD2BT_OT_prepare_armor_body(_PrepareArmorMixin, Operator):
+    bl_idname = "hd2bt.prepare_armor_body"
+    bl_label = "自动切割七个身体部件"
+    bl_description = "按权重、骨骼位置和连通块自动切割；是否指定部位由自动标记开关控制"
+    bl_options = {"REGISTER", "UNDO"}
+
+
+class HD2BT_OT_prepare_armor_physics(_PrepareArmorMixin, Operator):
     bl_idname = 'hd2bt.prepare_armor_physics'
     bl_label = '按物理链切分'
     bl_description = '按物理链正权重及链组连接整体分配部位；头盔与身体仍分别保存'
+    bl_options = {"REGISTER", "UNDO"}
     physics_aware = True
 
 
@@ -646,6 +686,7 @@ CLASSES = (
     HD2BT_OT_snap_bones,
     HD2BT_OT_rename_vertex_groups,
     HD2BT_OT_fix_grip_bones,
+    HD2BT_OT_configure_cut_marking,
     HD2BT_OT_prepare_armor_body,
     HD2BT_OT_prepare_armor_physics,
     HD2BT_OT_assign_part_metadata,

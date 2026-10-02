@@ -3,8 +3,8 @@
 自动切割不是无限平面切割：先看真实顶点权重，再限制在对应肢体附近，最后
 按网格连通块纠正头发、裙子和宽大衣服。这能避免大头被“手臂平面”误切，
 也避免一件独立的大衣在腰线处只切掉一半。头/躯干混合的连续皮肤会在颈部
-切线上真正二等分，不再沿原三角面投票生成锯齿。自动切割会直接指定七部位；手动
-模块只接收用户已经切好的网格并写入同一套部位标记，不存储也不封包。
+自动切割可选择是否指定七部位；
+手动模块只接收用户已经切好的网格并写入同一套部位标记。
 """
 
 from __future__ import annotations
@@ -19,6 +19,10 @@ from mathutils import Vector
 
 from ..utils.utils import HD2BTError
 from ..core.normal_policy import DEFAULT_WARNING, DEFAULT_LIMIT, validate_thresholds, classify_error
+from ..core.authoring_metadata import (
+    Assignment, MetadataError, PROP_PART_SLOT, assignment_from_mapping,
+    clear_assignment, validate_assignments, write_assignment,
+)
 
 
 VISIBLE_PARTS = ("Head", "LeftArm", "RightArm", "Torso", "Hips", "LeftLeg", "RightLeg")
@@ -496,6 +500,10 @@ def _duplicate_region(source, face_labels, region, collection, head_cut_plan=Non
     # “先拆开再分离”，不会像按坐标重建新网格那样在切口重新计算顶点法向。
     duplicate = source.copy()
     duplicate.data = source.data.copy()
+    # 制作标记与切割内部身份独立；副本不能继承源对象的差分或来源身份。
+    clear_assignment(duplicate)
+    if "HD2BT_AutoSplitSource" in duplicate:
+        del duplicate["HD2BT_AutoSplitSource"]
     duplicate.name = f"HD2BT_{region}_{source.name}"
     try:
         collection.objects.link(duplicate)
@@ -572,7 +580,7 @@ def _duplicate_region(source, face_labels, region, collection, head_cut_plan=Non
     if not duplicate.data.polygons:
         bpy.data.objects.remove(duplicate, do_unlink=True)
         return None
-    duplicate["HD2BT_PartSlot"] = region
+    duplicate["HD2BT_CutRegion"] = region
     return duplicate
 
 
@@ -594,17 +602,22 @@ def _join_region_objects(objects, region, error_tolerance=CUT_NORMAL_ERROR_TOLER
     # 因而验证的是最终七部位对象，而不是合并前的中间副本。
     normal_error = _restore_corner_normals(result.data, error_tolerance)
     result.name = f"HD2BT_{region}"
-    result["HD2BT_PartSlot"] = region
+    result["HD2BT_CutRegion"] = region
     result["HD2BT_CutNormalsPreserved"] = True
     result["HD2BT_CutNormalMaxError"] = float(normal_error)
     return result
+
+
+def _cut_region(obj):
+    """兼容旧切割结果，同时让无作者标记的新结果不被重复切割。"""
+    return obj.get("HD2BT_CutRegion") or obj.get(PROP_PART_SLOT)
 
 
 def _selected_meshes(context, target):
     selected = [
         obj
         for obj in context.selected_objects
-        if obj.type == "MESH" and obj.get("HD2BT_PartSlot") not in VISIBLE_PARTS
+        if obj.type == "MESH" and _cut_region(obj) not in VISIBLE_PARTS
     ]
     if selected:
         return selected
@@ -619,7 +632,7 @@ def _selected_meshes(context, target):
     for obj in bpy.data.objects:
         if obj.type != "MESH" or obj.get("HD2BT_ExportTemplate"):
             continue
-        if obj.get("HD2BT_PartSlot") in VISIBLE_PARTS:
+        if _cut_region(obj) in VISIBLE_PARTS:
             continue
         if obj.name.startswith("content/fac_helldivers/cha_avatar/"):
             continue
@@ -721,6 +734,20 @@ def auto_split_independent_character(context, target, *, physics_aware=False):
     except ValueError as exc:
         raise HD2BTError(str(exc)) from exc
     sources = _selected_meshes(context, target)
+    mark_parts = bool(getattr(settings, "cut_auto_mark_parts", False))
+    difference_logic = getattr(settings, "cut_difference_logic", "FREE")
+    base_group = getattr(settings, "base_group_name", "基础组")
+    if mark_parts:
+        # 在创建、隐藏或清理任何对象之前验证整份 Scene，绝不静默转换旧标记。
+        existing = [assignment_from_mapping(obj.name, obj) for obj in context.scene.objects
+                    if obj.type == "MESH" and obj.get(PROP_PART_SLOT)]
+        candidates = [Assignment(f"HD2BT_{slot}（本次切割）", slot,
+                                 base_group=base_group, difference_logic=difference_logic)
+                      for slot in VISIBLE_PARTS]
+        try:
+            validate_assignments(existing + candidates)
+        except MetadataError as exc:
+            raise HD2BTError(f"自动标记预检失败：{exc}；请先处理已有指定，或关闭自动标记后仅切割") from exc
     if any(not all(math.isfinite(v) for v in vertex.co) for source in sources for vertex in source.data.vertices):
         raise HD2BTError("源网格含非有限顶点坐标；法向阈值不能跳过此检查")
     plans = [_prepare_flat_head_cut(source, target, _face_labels(source, target)) for source in sources]
@@ -746,7 +773,7 @@ def auto_split_independent_character(context, target, *, physics_aware=False):
         for obj in bpy.data.objects
         if obj.type == "MESH"
         and obj.name.startswith("HD2BT_")
-        and obj.get("HD2BT_PartSlot") in VISIBLE_PARTS
+        and _cut_region(obj) in VISIBLE_PARTS
         and not bool(obj.get("HD2BT_CutNormalsPreserved"))
     ]
     for obj in incomplete:
@@ -767,6 +794,12 @@ def auto_split_independent_character(context, target, *, physics_aware=False):
         parts = [_join_region_objects(region_rows[region], region, limit) for region in VISIBLE_PARTS]
         empty_groups_removed = sum(remove_empty_vertex_groups(part, epsilon=0.0) if physics_aware
                                    else remove_empty_vertex_groups(part) for part in parts)
+        if mark_parts:
+            for part in parts:
+                write_assignment(part, Assignment(
+                    part.name, part["HD2BT_CutRegion"], base_group=base_group,
+                    difference_logic=difference_logic,
+                ))
     except Exception:
         # 失败必须恢复到点击按钮前；Operator 返回 CANCELLED 本身不会替用户回滚场景。
         for obj in created:
@@ -794,6 +827,7 @@ def auto_split_independent_character(context, target, *, physics_aware=False):
         "mode": "AUTO",
         "physics_report": physics_report,
         "parts": parts,
+        "marked_parts": mark_parts,
         "sources": sources,
         "empty_groups_removed": empty_groups_removed,
         "normal_max_error": maximum,

@@ -1,6 +1,6 @@
 """HD2 Batch Tool 的唯一版本源。"""
 
-VERSION = (0, 9, 0)
+VERSION = (0, 9, 1)
 PRERELEASE = ()
 # PRERELEASE = ("dev", 1)
 

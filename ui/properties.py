@@ -50,6 +50,16 @@ class HD2BT_FreeDifferenceGroup(PropertyGroup):
 
 
 class HD2BT_Settings(PropertyGroup):
+    cut_auto_mark_parts: BoolProperty(
+        name="自动标记部位", default=False,
+        description="切割后为七个结果写入完整的基础部位标记；关闭时只切割，之后可手动指定",
+    )
+    cut_difference_logic: EnumProperty(
+        name="切割标记的差分逻辑",
+        items=(("FREE", "自由搭配差分", "基础部位常驻，各部位差分独立选择"),
+               ("GROUP", "组差分", "具名身体差分组与头盔单差分")),
+        default="FREE",
+    )
     authoring_difference_logic: EnumProperty(
         name="差分逻辑", items=(("GROUP", "组差分", "具名身体组与头盔单差分"),
                                   ("FREE", "自由搭配差分", "各语义部位独立选择一个差分")),
