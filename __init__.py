@@ -15,7 +15,7 @@ VERSION_TEXT = _version.VERSION_TEXT
 bl_info = {
     "name": "Helldivers 2 Batch Tool",
     "author": "AQ-Echoo,WisA9",
-    "version": (0, 9, 1),
+    "version": (0, 9, 2),
     "blender": (4, 0, 0),
     "location": "3D View > 侧边栏 > HD2 Batch Tool",
     "description": "人物骨架吸附、权重重命名与身体七部位切分",
